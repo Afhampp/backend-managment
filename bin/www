@@ -7,6 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
+var initSocketIO = require('../controllers/chatcontroller'); 
 
 /**
  * Get port from environment and store in Express.
@@ -20,6 +21,13 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+var io = initSocketIO(server); // Attach Socket.io to the server
+
+/**
+ * Socket.io connection handling.
+ */
+
+
 
 /**
  * Listen on provided port, on all network interfaces.

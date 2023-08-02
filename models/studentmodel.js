@@ -15,6 +15,10 @@ const studentscema=mongoose.Schema({
     },
     image:{type:String
     },
+    classes: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'classdb',
+      },
    
 })
 

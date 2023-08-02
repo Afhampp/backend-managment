@@ -187,6 +187,10 @@ const studenttoclass = async (req, res) => {
       { _id: req.params.id },
       { $addToSet: { students: { $each: req.body.students } } }
     );
+    for(let studentid of req.body.students){
+      await studentdb.updateOne({ _id:studentid },
+        { $set: { classes: req.params.id } })
+    }
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
@@ -213,6 +217,8 @@ const removestudent = async (req, res) => {
       { _id: req.params.id },
       { $pull: { students: { $in: req.body._id } } }
     );
+    await studentdb.updateOne({ _id: req.body._id },
+      { $unset: { classes: req.params.id  } })
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
@@ -270,7 +276,7 @@ const updatestudent = async (req, res) => {
 };
 const updateclass = async (req, res) => {
   try {
-    const find = await await classdb.updateOne(
+    const find = await classdb.updateOne(
       { _id: req.params.id },
       { $set: { name: req.body.name } }
     );
