@@ -6,6 +6,8 @@ const teacherdb = require("../models/teachermodel");
 const subjectdb = require("../models/subjectmodel");
 const studentdb = require("../models/studentmodel");
 const classdb = require("../models/classmodel");
+const scheduledb=require('../models/schedulemodel')
+const attendancedb=require('../models/attedancemodel')
 
 const hasspassword = async (pass) => {
   const converpass = await bcrypt.hash(pass, 10);
@@ -35,6 +37,20 @@ const adminlogin = async (req, res) => {
         .status(200)
         .json({ status: "error", msg: "Invalid admin", check: "email" });
     }
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+};
+
+const getcount = async (req, res) => {
+  try {
+
+    const totalclass=await admindb.find().count()
+    const totalteacher=await teacherdb.find().count()
+    const totalstudent=await studentdb.find().count()
+
+      res.status(200).json({ totalclass,totalstudent,totalteacher });
+     
   } catch (error) {
     res.status(500).json({ error });
   }
@@ -71,13 +87,22 @@ const addclass = async (req, res) => {
     if (find) {
       res.status(200).json({ status: "error" });
     } else {
+   
       await classdb.create({ name: req.body.name });
+      const findclass = await classdb.findOne({ name: req.body.name });
+
+      
+      await scheduledb.create({ class: findclass._id });
+      await attendancedb.create({class: findclass._id})
+    
+
       res.status(200).json({ status: "success" });
     }
   } catch (error) {
     res.status(500).json({ error });
   }
 };
+
 const addstudent = async (req, res) => {
   try {
     console.log(req.body);
@@ -164,66 +189,160 @@ const getclassstudent = async (req, res) => {
     res.status(500).json({ error });
   }
 };
+
+const getschedule= async (req, res) => {
+  try {
+    const getdat = await scheduledb.findOne({ class: req.params.id });
+    let getdata=[]
+     getdata.push(getdat.submittion)
+
+
+    res.status(200).json({ getdata });
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+};
+
 const teachertoclass = async (req, res) => {
   try {
+    const teacherIds = req.body.teachers;
+
+    // Step 1: Update classdb to add teachers to the class
     await classdb.updateOne(
       { _id: req.params.id },
-      { $addToSet: { teachers: { $each: req.body.teachers } } }
+      { $addToSet: { teachers: { $each: teacherIds } } }
     );
-    for (let teacherId of req.body.teachers) {
+
+    for (let teacherId of teacherIds) {
+      // Step 2: Update teacherdb to add the class to the teacher's classes
       await teacherdb.updateOne(
         { _id: teacherId },
         { $push: { classes: req.params.id } }
       );
+
+      // Step 3: Update attendancedb to add the teacher and initialize students' attendance
+      const updatedAttendance = await attendancedb.findOneAndUpdate(
+        { class: req.params.id, "teachers.teacher": { $ne: teacherId } },
+        {
+          $addToSet: {
+            teachers: {
+              teacher: teacherId,
+              students: [],
+            },
+          },
+        },
+        { new: true }
+      );
+
+      console.log(updatedAttendance);
     }
+
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
+
+
+
 const studenttoclass = async (req, res) => {
   try {
+    // Fetch teacher IDs from classdb
+    const teacherIds = await classdb.findOne({ _id: req.params.id }).select('teachers');
+
+    // Update classdb to add students to the class
     await classdb.updateOne(
       { _id: req.params.id },
       { $addToSet: { students: { $each: req.body.students } } }
     );
-    for(let studentid of req.body.students){
-      await studentdb.updateOne({ _id:studentid },
-        { $set: { classes: req.params.id } })
+
+    // Loop through each student and update studentdb and attendancedb
+    for (let studentId of req.body.students) {
+      // Update studentdb to set student's class
+      await studentdb.updateOne(
+        { _id: studentId },
+        { $set: { classes: req.params.id } }
+      );
+
+      // Update attendancedb to add students to each teacher's students array
+      await attendancedb.updateMany(
+        { class: req.params.id, "teachers.teacher": { $in: teacherIds.teachers } },
+        {
+          $addToSet: {
+            "teachers.$[teacher].students": { student: studentId, attendance: [] }
+          }
+        },
+        { arrayFilters: [{ "teacher.teacher": { $in: teacherIds.teachers } }] }
+      );
     }
+
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
+
+
 const removeteacher = async (req, res) => {
   try {
+    const teacherId = req.body._id;
+
+    // Step 1: Update classdb to remove the teacher from the class
     await classdb.updateOne(
       { _id: req.params.id },
-      { $pull: { teachers: { $in: req.body._id } } }
+      { $pull: { teachers: teacherId } }
     );
+
     await teacherdb.updateOne(
-      { _id: req.body._id },
-      { $pull: { classes: { $in: req.params.id } } }
+      { _id: teacherId },
+      { $pull: { classes: req.params.id } }
     );
+
+    await attendancedb.updateMany(
+      { class: req.params.id },
+      {
+        $pull: {
+          "teachers": { teacher: teacherId },
+        }
+      }
+    );
+
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
+
 const removestudent = async (req, res) => {
   try {
+    const studentId = req.body._id;
+
     await classdb.updateOne(
       { _id: req.params.id },
-      { $pull: { students: { $in: req.body._id } } }
+      { $pull: { students: studentId } }
     );
-    await studentdb.updateOne({ _id: req.body._id },
-      { $unset: { classes: req.params.id  } })
+
+    await studentdb.updateOne(
+      { _id: studentId },
+      { $unset: { classes: req.params.id } }
+    );
+
+   
+    await attendancedb.updateMany(
+      { class: req.params.id, "teachers.students.student": studentId },
+      {
+        $pull: {
+          "teachers.$[].students": { student: studentId }
+        }
+      }
+    );
+
     res.status(200).json({ status: "success" });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
+1
 
 const updateteacher = async (req, res) => {
   try {
@@ -239,6 +358,44 @@ const updateteacher = async (req, res) => {
     res.status(500).json({ error });
   }
 };
+
+const updateshedule = async (req, res) => {
+  try {
+    const classId = req.params.id;
+    const { day, ...timeSlots } = req.body;
+
+    const schedule = await scheduledb.findOne({ class: classId });
+
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    
+    const dayObject = schedule.submittion.find((item) => item.day === day);
+
+    if (!dayObject) {
+      return res.status(404).json({ error: 'Day not found in the schedule' });
+    }
+
+    for (const time of Object.keys(timeSlots)) {
+      const timeSlotIndex = dayObject.slots.findIndex((slot) => slot.time === time);
+
+      if (timeSlotIndex !== -1) {
+        dayObject.slots[timeSlotIndex].file = timeSlots[time];
+      } else {
+        dayObject.slots.push({ time, file: timeSlots[time] });
+      }
+    }
+
+    await schedule.save();
+
+    res.status(200).json({ status: 'success', data: schedule });
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+};
+
+
 const updatesubject = async (req, res) => {
   try {
     const find = await subjectdb.findOne({ subject: req.body.subject });
@@ -297,6 +454,8 @@ const deleteteacher = async (req, res) => {
 const deletaclass = async (req, res) => {
   try {
     await classdb.deleteOne({ _id: req.params.id });
+    await scheduledb.deleteOne({class:req.params.id})
+    await attendancedb.deleteOne({class:req.params.id})
     res.status(200).json();
   } catch (error) {
     res.status(500).json({ error });
@@ -356,4 +515,7 @@ module.exports = {
   getclassstudent,
   studenttoclass,
   removestudent,
+  getschedule,
+  updateshedule,
+  getcount
 };

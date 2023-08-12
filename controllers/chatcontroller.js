@@ -9,18 +9,17 @@ const socketIO = require('socket.io');
 function initSocketIO(server) {
   const io = socketIO(server, {
     cors: {
-      origin: '*', // Replace * with the appropriate origin URL or an array of allowed origins
+      origin: '*',
       methods: ['GET', 'POST'],
     },
   });
 
-  // Socket.io connection handling
   io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
     socket.on('select-student', async (selectedStudent) => {
       try {
-        // Find messages with matching receiver ID (selected student's ID) and sender ID (teacher's ID)
+        console.log(selectedStudent)
         const receiverId = selectedStudent._id;
         const senderId = selectedStudent.teacherid;
         const newMessage = await Message.find({
@@ -29,9 +28,8 @@ function initSocketIO(server) {
             { receiver: senderId, senderid: receiverId },
           ],
         })
-        console.log(newMessage)
+        
     
-        // Emit the messages to the client
         socket.emit('chat-message', newMessage);
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -41,36 +39,70 @@ function initSocketIO(server) {
 
     socket.on('select-teacher', async (selectteacher) => {
       try {
-        // Find messages with matching receiver ID (selected student's ID) and sender ID (teacher's ID)
         const receiverId = selectteacher._id;
         const senderId = selectteacher.studentid;
         const newMessage = await Message.find({
           $or: [
-            { receiver: receiverId, senderid: senderId },
+            { receiver: receiverId, senderid: senderId},
             { receiver: senderId, senderid: receiverId },
           ],
         });
-        console.log(newMessage)
     
-        // Emit the messages to the client
+    
         socket.emit('chat-message-student', newMessage);
       } catch (error) {
         console.error('Error fetching messages:', error);
       }
     });
+    socket.on('select-group', async (selectedgroup) => {
+      try {
+        console.log(selectedgroup,"ethi.........")
+        const receiverId = selectedgroup.classid;
+        const senderId = selectedgroup.teacherid;
+        const newMessage = await Message.find({
+          $or: [
+            { receiver: receiverId, senderid: senderId},
+            { receiver: senderId, senderid: receiverId },
+          ],
+        });
+    
+    
+        socket.emit('chat-message-group', newMessage);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    });
 
-    // Handle incoming chat messages
+    socket.on('select-group-student', async (selectedgroup) => {
+      try {
+
+        const receiverId = selectedgroup._id;
+        const senderId = selectedgroup.studentid;
+        const newMessage = await Message.find({
+          $or: [
+            { receiver: receiverId, senderid: senderId},
+            { receiver: senderId, senderid: receiverId },
+          ],
+        });
+
+    
+        socket.emit('chat-message-group', newMessage);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    });
+
     socket.on('chat-message', async (message) => {
-        console.log(message);
+       
     
 
-      // Save the message to the database
       try {
         const bookMessage = new Message({
           sender: message.sender,
           senderid:message.senderid,
           receiver: message.receiver,
           content: message.content,
+          classpresent:false
         });
         await bookMessage.save();
 
@@ -81,19 +113,75 @@ function initSocketIO(server) {
           ],
         })
 
-        // Emit the saved message to all connected clients, including the sender
         io.emit('chat-message-new', newMessage);
       } catch (error) {
         console.error('Error saving message:', error);
       }
     });
 
+     socket.on('chat-message-group-teacher', async (message) => {
+       
+    
+
+      try {
+        const bookMessage = new Message({
+          sender: message.sender,
+          senderid:message.senderid,
+          receiver: message.receiver,
+          content: message.content,
+   
+        });
+        await bookMessage.save();
+
+        const newMessage = await Message.find({
+          $or: [
+            { receiver: message.receiver, senderid: message.senderid },
+            { receiver: message.senderid, senderid: message.receiver },
+          ],
+        })
+
+        io.emit('chat-message-group-message-to-front', newMessage);
+      } catch (error) {
+        console.error('Error saving message:', error);
+      }
+    });
+
+    socket.on('chat-message-group-student', async (message) => {
+       
+    
+
+      try {
+  
+        const bookMessage = new Message({
+          sender: message.sender,
+          senderid:message.senderid,
+          receiver: message.receiver,
+          content: message.content,
+   
+        });
+        await bookMessage.save();
+
+        const newMessage = await Message.find({
+          $or: [
+            { receiver: message.receiver, senderid: message.senderid },
+            { receiver: message.senderid, senderid: message.receiver },
+          ],
+        })
+
+        console.log(newMessage)
+
+        io.emit('chat-message-group-message-to-front', newMessage);
+      } catch (error) {
+        console.error('Error saving message:', error);
+      }
+    });
+
     socket.on('chat-message-student', async (message) => {
-      console.log(message);
+     
   
 
-    // Save the message to the database
     try {
+  
       const bookMessage = new Message({
         sender: message.sender,
         senderid:message.senderid,
@@ -107,19 +195,16 @@ function initSocketIO(server) {
           { receiver: message.senderid, senderid: message.receiver },
         ],
       })
-      
+      console.log(newMessage)
 
-      // Emit the saved message to all connected clients, including the sender
       io.emit('chat-message-new', newMessage);
     } catch (error) {
       console.error('Error saving message:', error);
     }
   });
 
-    // Handle disconnection
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
-      // Additional logic for handling user disconnection if needed
     });
   });
 

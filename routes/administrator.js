@@ -1,7 +1,8 @@
 var express = require('express');
 var router = express.Router();
 const admincontroller=require('../controllers/admincontroller')
-const jwt=require('../middleware/jwt')
+const jwt=require('../middleware/jwt');
+const admin = require('../models/admin');
 
 /* GET users listing. */
 router.post('/login',admincontroller.adminlogin )
@@ -27,5 +28,8 @@ router.post('/teachertoclass/:id',admincontroller.teachertoclass)
 router.put('/removeteacher/:id',admincontroller.removeteacher)
 router.post('/studenttoclass/:id',admincontroller.studenttoclass)
 router.put('/removestudent/:id',admincontroller.removestudent)
+router.get('/getclassschedule/:id',admincontroller.getschedule)
+router.put('/updateschedule/:id',admincontroller.updateshedule)
+router.get('/getcount',admincontroller.getcount)
 
 module.exports = router;

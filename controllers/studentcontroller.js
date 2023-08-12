@@ -3,6 +3,7 @@ const assigmentdb=require('../models/assigmentmodels')
 const studentdb = require("../models/studentmodel");
 const classdb = require("../models/classmodel");
 const notesdb=require('../models/notesmodels')
+const attendancedb=require('../models/attedancemodel')
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const secretKey = "your-secret-key";
@@ -34,19 +35,7 @@ const studentlogin = async (req, res) => {
     res.status(500).json({ error });
   }
 };
-const getassigment=async(req,res)=>{
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, secretKey);
-    const teacherId = decoded.value.classes;
 
-   const getdata=await assigmentdb.find({class:teacherId}).populate('teacher')
-      res.status(200).json({getdata})
-    } catch (error) {
-      res.status(500).json({ error });
-    }
-}
 
 const getnotes=async(req,res)=>{
   try {
@@ -68,32 +57,33 @@ const getstudentid = async (req, res) => {
     const decoded = jwt.verify(token, secretKey);
     const studentid = decoded.value._id;
     const studentname=decoded.value.name
-    // Find the student document by ID and populate the 'classes' field with the associated documents
     const student = await studentdb.findById(studentid).populate({
       path: 'classes',
       populate: {
         path: 'teachers',
         model: 'teacherdb',
-        select: '_id name', // Select only '_id' and 'name' fields of the teacher document
+        select: '_id name', 
       },
     });
     console.log(student)
-
-    // Collect teacher details from the classes the student is enrolled in
+  
+    const classes=[]
+    classes.push(student.classes)
     const teachersData = [];
     const classData = student.classes;
     for (const teacher of classData.teachers) {
       teachersData.push({
-        _id: teacher._id, // Send the teacher ID
-        name: teacher.name, // Send the teacher name
+        _id: teacher._id, 
+        name: teacher.name, 
       });
     }
-    console.log(teachersData);
+ 
 
     res.status(200).json({
       studentid,
       studentname,
-      teachersData, // Send the array of teacher details associated with the student
+      teachersData, 
+      classes
     });
   } catch (error) {
     res.status(500).json({ error });
@@ -101,46 +91,96 @@ const getstudentid = async (req, res) => {
 };
 
 
-const assigmentsubmittion= async (req, res) => {
+
+const getattendace = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
     const decoded = jwt.verify(token, secretKey);
-    const studentid = decoded.value._id;
-    console.log(req.file)
-    console.log(req.params.id)
-    console.log(studentid)
-    const fileData = {
-      student: studentid,
-      file: req.file.filename,
-      date: Date.now(), // Use current date for submission date
-    };
-    const assignmentId = req.params.id;
-    const assignment = await assigmentdb.findById(assignmentId);
-    // Find the assignment using req.params.id
-    const existingSubmissionIndex = assignment.submittion.findIndex(
-      (submission) => submission.student.toString() === studentid
+    const studentId = decoded.value._id;
+
+    const student = await studentdb.findById(studentId).populate('classes');
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    const attendanceData = await attendancedb.findOne({ class: student.classes._id })
+      .populate({
+        path: 'teachers.teacher',
+        select: 'name subjects', 
+      });
+
+    if (!attendanceData) {
+      console.log('Attendance data not found for the class.');
+      return res.status(404).json({ message: 'Attendance data not found for the class.' });
+    }
+
+    const studentAttendance = attendanceData.teachers.find(teacherData =>
+      teacherData.students.some(studentData => studentData.student.toString() === studentId)
     );
 
-    if (existingSubmissionIndex !== -1) {
-      // If the student's submission exists, update the relevant fields
-      assignment.submittion[existingSubmissionIndex].file = req.file.filename;
-      assignment.submittion[existingSubmissionIndex].date = Date.now();
-    } else {
-      // If the student's submission doesn't exist, add it as a new entry
-      assignment.submittion.push(fileData);
+    if (!studentAttendance || !studentAttendance.students || studentAttendance.students.length === 0) {
+      console.log('Student attendance not found.');
+      return res.status(404).json({ message: 'Student attendance not found.' });
     }
-    await assignment.save();
-    res.status(200).json({ status: "success" });
+
+    const teacherName = studentAttendance.teacher.name;
+    const teacherId = studentAttendance.teacher._id;
+    const teacherSubjects = studentAttendance.teacher.subjects; 
+    const attendanceDetails = studentAttendance.students[0]?.attendance || [];
+
+    const teacherAttendanceArray = attendanceData.teachers.map(teacherData => {
+      const teacher = teacherData.teacher;
+      const presentCount = teacherData.students.reduce((total, studentData) => {
+        return total + studentData.attendance.filter(att => att.status === 'present').length;
+      }, 0);
+      const absentCount = teacherData.students.reduce((total, studentData) => {
+        return total + studentData.attendance.filter(att => att.status === 'absent').length;
+      }, 0);
+
+      return {
+        teacherName: teacher.name,
+        teacherId: teacher._id,
+        teacherSubjects, 
+        presentCount,
+        absentCount,
+      };
+    });
+    console.log(teacherAttendanceArray);
+
+    res.status(200).json({
+      
+      teacherAttendanceArray,
+    });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
 
+const getclass=async(req,res)=>{
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, secretKey);
+    const classid = decoded.value.classes;
+
+   
+      res.status(200).json({classid})
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+}
+
+
+
+
+
 module.exports = {
   studentlogin,
-  getassigment,
-  assigmentsubmittion,
+
   getstudentid,
-  getnotes
+  getnotes,
+  getattendace,
+  getclass
 };

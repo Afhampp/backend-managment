@@ -31,7 +31,11 @@ const assigmentschema=mongoose.Schema({
         },
         date:{
             type:Date,
+        },
+        mark:{
+            type:Number
         }
+
 
     }
     ]
