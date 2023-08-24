@@ -46,6 +46,64 @@ const getstudentfromclass=async(req,res)=>{
     }
 }
 
+const getcount = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, secretKey);
+    const teacherId = decoded.value._id;
+    const teacherData = await teacherdb
+      .findOne({ _id: teacherId })
+      .populate('classes');
+
+    let totalClasses = 0;
+    let totalStudents = 0;
+    let classAttendance = []; 
+
+    for (const classInfo of teacherData.classes) {
+      const classId = classInfo._id;
+      const attendanceData = await attendancedb
+        .findOne({ class: classId }) 
+        .populate('teachers.teacher');
+
+      let classAttendanceCount = 0; 
+
+      if (attendanceData) {
+        for (const teacherAttendance of attendanceData.teachers) {
+          if (teacherAttendance.teacher._id.equals(teacherId)) {
+            for (const studentAttendance of teacherAttendance.students) {
+              for (const attendanceRecord of studentAttendance.attendance) {
+                if (attendanceRecord.status === 'present') {
+                  classAttendanceCount++;
+                }
+              }
+            }
+            break; 
+          }
+        }
+      }
+
+      totalClasses++;
+      totalStudents += classInfo.students.length;
+
+      classAttendance.push({
+        className: classInfo.name,
+        attendanceCount: classAttendanceCount,
+      });
+    }
+    console.log(classAttendance)
+
+    res.status(200).json({ totalClasses, totalStudents, classAttendance });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
+
 const getclasses = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -270,7 +328,7 @@ const getattedancedate = async (req, res) => {
 
     res.status(200).json(studentAttendance);
   } catch (error) {
-    console.error(error);
+
     res.status(500).json({ error: error.message });
   }
 };
@@ -280,11 +338,6 @@ const updateattendace = async (req, res) => {
     const { classid, teacherid, studentid, date, status } = req.body;
 
     const parsedDate = new Date(date);
-    console.log(classid)
-    console.log(parsedDate)
-    console.log(status)
-    console.log(teacherid)
-    console.log(studentid)
 
     const x=await attendancedb.findOneAndUpdate(
       {
@@ -311,11 +364,10 @@ const updateattendace = async (req, res) => {
         new: true
       }
     );
-    console.log(x)
 
     res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error(error); 
+   
     res.status(500).json({ error: error.message });
   }
 };
@@ -350,4 +402,5 @@ module.exports = {
   addattendace,
   getattedancedate,
   updateattendace,
+  getcount
 };

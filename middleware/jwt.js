@@ -11,9 +11,10 @@ function authenticateToken(req, res, next) {
     const tokenValue = token.split(' ')[1];
   
     jwt.verify(tokenValue, secretKey, (err, decoded) => {
+
       if (err) {
         if (err.name === 'TokenExpiredError') {
-            console.log(err)
+         
           return res.status(403).json({ message: 'session has expired' });
         } else {
           return res.status(403).json({ message: 'Invalid token' });
@@ -21,6 +22,7 @@ function authenticateToken(req, res, next) {
       }
   
       req.user = decoded;
+    
       next();
     });
   }

@@ -56,32 +56,43 @@ function initSocketIO(server) {
     });
     socket.on('select-group', async (selectedgroup) => {
       try {
-        console.log(selectedgroup,"ethi.........")
+        console.log(selectedgroup, "ethi.........");
+    
         const receiverId = selectedgroup.classid;
-        const senderId = selectedgroup.teacherid;
-        const newMessage = await Message.find({
+        const teacherId = selectedgroup.teacherid;
+    
+        const classDocument = await classdb.findById(receiverId);
+        const studentIds = classDocument.students.map(student => student);
+    
+        const newMessages = await Message.find({
           $or: [
-            { receiver: receiverId, senderid: senderId},
-            { receiver: senderId, senderid: receiverId },
+            { receiver: receiverId, senderid: teacherId },
+            { receiver: receiverId, senderid: { $in: studentIds } },
+            
+           
           ],
         });
+     
     
-    
-        socket.emit('chat-message-group', newMessage);
+        socket.emit('chat-message-group', newMessages);
       } catch (error) {
         console.error('Error fetching messages:', error);
       }
     });
-
+    
+    
     socket.on('select-group-student', async (selectedgroup) => {
       try {
 
         const receiverId = selectedgroup._id;
         const senderId = selectedgroup.studentid;
+        const classDocument = await classdb.findById(receiverId);
+        const teacherid = classDocument.teachers.map(teacher => teacher);
         const newMessage = await Message.find({
           $or: [
             { receiver: receiverId, senderid: senderId},
-            { receiver: senderId, senderid: receiverId },
+            {receiver:receiverId,senderid:{$in:teacherid}}
+         
           ],
         });
 
@@ -124,6 +135,7 @@ function initSocketIO(server) {
     
 
       try {
+
         const bookMessage = new Message({
           sender: message.sender,
           senderid:message.senderid,
@@ -132,15 +144,21 @@ function initSocketIO(server) {
    
         });
         await bookMessage.save();
+        
+        const classDocument = await classdb.findById(message.receiver);
+        const studentIds = classDocument.students.map(student => student);
 
-        const newMessage = await Message.find({
+        const newMessages = await Message.find({
           $or: [
             { receiver: message.receiver, senderid: message.senderid },
-            { receiver: message.senderid, senderid: message.receiver },
+            { receiver: message.receiver, senderid: { $in: studentIds } },
+            
+           
           ],
-        })
+        });
+     
 
-        io.emit('chat-message-group-message-to-front', newMessage);
+        io.emit('chat-message-group-message-to-front', newMessages);
       } catch (error) {
         console.error('Error saving message:', error);
       }
@@ -160,11 +178,13 @@ function initSocketIO(server) {
    
         });
         await bookMessage.save();
+        const classDocument = await classdb.findById(message.receiver);
+        const teacherid = classDocument.teachers.map(teacher => teacher);
 
         const newMessage = await Message.find({
           $or: [
             { receiver: message.receiver, senderid: message.senderid },
-            { receiver: message.senderid, senderid: message.receiver },
+            { receiver: message.senderid, senderid: {$in:teacherid} },
           ],
         })
 

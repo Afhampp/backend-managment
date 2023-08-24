@@ -26,6 +26,7 @@ router.put('/addattendace',teacherconroller.addattendace)
 router.get('/getattedancedate/:classid',jwt, teacherconroller.getattedancedate);
 router.put('/updateattendace',teacherconroller.updateattendace)
 router.put('/updatemark',assigmentcontroller.updatemark)
+router.get('/getcount',teacherconroller.getcount)
 
 
 module.exports = router;

@@ -98,7 +98,6 @@ const postassigment=async(req,res)=>{
       const submissionId = req.body._id;
       const newMark = req.body.mark;
   
-      // Find the assignment with the teacher's ID and matching submission
       const assignment = await assigmentdb.findOne({
         teacher: teacherId,
         'submittion._id': submissionId,
@@ -128,14 +127,13 @@ const postassigment=async(req,res)=>{
       const token = authHeader && authHeader.split(' ')[1];
       const decoded = jwt.verify(token, secretKey);
       const teacherId = decoded.value.classes;
-      const studentId = decoded.value._id; // Replace with actual property name
+      const studentId = decoded.value._id; 
   
       const getdata = await assigmentdb
         .find({ class: teacherId })
         .populate('teacher')
-        .populate('submittion.student'); // Populate the student field
+        .populate('submittion.student'); 
   
-      // Create a modified data array to include marks for a particular student
       const modifiedData = getdata.map(assignment => {
         return {
           _id: assignment._id,
@@ -151,10 +149,10 @@ const postassigment=async(req,res)=>{
                 student: submission.student,
                 file: submission.file,
                 date: submission.date,
-                mark: submission.mark, // Include the mark
+                mark: submission.mark, 
               };
             }
-          }).filter(Boolean), // Remove undefined values
+          }).filter(Boolean), 
         };
       });
   

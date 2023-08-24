@@ -13,6 +13,10 @@ router.put('/assigmentsubmittion/:id',jwt,upload.single('file'),assigmentcontrol
 router.get('/getstudentid',jwt,studentcontroller.getstudentid)
 router.get('/getattendace',jwt,studentcontroller.getattendace)
 router.get('/getclass',studentcontroller.getclass)
+router.get('/getcountstudent',jwt,studentcontroller.getcountstudent)
+router.put('/profilechange',jwt,upload.single('file'),studentcontroller.profilechange)
+router.get('/getprofile',studentcontroller.getprofile)
+router.put('/forgetpass',studentcontroller.forgetpass)
 
 
 module.exports = router;

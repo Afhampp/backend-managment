@@ -8,10 +8,44 @@ const studentdb = require("../models/studentmodel");
 const classdb = require("../models/classmodel");
 const scheduledb=require('../models/schedulemodel')
 const attendancedb=require('../models/attedancemodel')
+const nodemailer=require('nodemailer')
 
 const hasspassword = async (pass) => {
   const converpass = await bcrypt.hash(pass, 10);
   return converpass;
+};
+
+const sendpasswordverification = (email,name,phone,id) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: "Collagemail121@gmail.com",
+        pass: "vpcqydorbvrwmlkf",
+      },
+    });
+    const mailOption = {
+      from: "Collagemail121@gmail.com",
+      to: email,
+      subject: "for verification email",
+      html:
+      '<p>here is the otp for email change: <a href="http://localhost:4200/forgetpassword/' +
+        id +
+        '">Click here</a></p>',
+    };
+    transporter.sendMail(mailOption, function (error, info) {
+      if (error) {
+       console.log(error)
+      } else {
+        console.log("email send", info.response);
+      }
+    });
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
 
 const adminlogin = async (req, res) => {
@@ -23,7 +57,7 @@ const adminlogin = async (req, res) => {
         emailchecker.password
       );
       if (passcompare) {
-        const token = jwt.sign({ value: emailchecker }, secretKey, {
+        const token = jwt.sign({ value: emailchecker}, secretKey, {
           expiresIn: "6000000",
         });
         res.status(200).json({ status: "success", token });
@@ -48,8 +82,9 @@ const getcount = async (req, res) => {
     const totalclass=await admindb.find().count()
     const totalteacher=await teacherdb.find().count()
     const totalstudent=await studentdb.find().count()
+    const totalsubject=await subjectdb.find().count()
 
-      res.status(200).json({ totalclass,totalstudent,totalteacher });
+      res.status(200).json({ totalclass,totalstudent,totalteacher ,totalsubject});
      
   } catch (error) {
     res.status(500).json({ error });
@@ -58,7 +93,7 @@ const getcount = async (req, res) => {
 
 const addtecher = async (req, res) => {
   try {
-    console.log(req.body);
+  
     if (req.body.password == req.body.confirm) {
       const hashpass = await hasspassword(req.body.password);
       await teacherdb.insertMany([
@@ -105,7 +140,6 @@ const addclass = async (req, res) => {
 
 const addstudent = async (req, res) => {
   try {
-    console.log(req.body);
     if (req.body.password == req.body.confirm) {
       const hashpass = await hasspassword(req.body.password);
 
@@ -117,11 +151,14 @@ const addstudent = async (req, res) => {
           password: hashpass,
         },
       ]);
+      const find=await studentdb.findOne({email:req.body.email})
+      sendpasswordverification(req.body.email,req.body.name,req.body.phone,find._id)
       res.status(200).json({ status: "success" });
     } else {
       res.status(200).json({ status: "error" });
     }
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error });
   }
 };
@@ -207,20 +244,17 @@ const teachertoclass = async (req, res) => {
   try {
     const teacherIds = req.body.teachers;
 
-    // Step 1: Update classdb to add teachers to the class
     await classdb.updateOne(
       { _id: req.params.id },
       { $addToSet: { teachers: { $each: teacherIds } } }
     );
 
     for (let teacherId of teacherIds) {
-      // Step 2: Update teacherdb to add the class to the teacher's classes
       await teacherdb.updateOne(
         { _id: teacherId },
         { $push: { classes: req.params.id } }
       );
 
-      // Step 3: Update attendancedb to add the teacher and initialize students' attendance
       const updatedAttendance = await attendancedb.findOneAndUpdate(
         { class: req.params.id, "teachers.teacher": { $ne: teacherId } },
         {
@@ -247,24 +281,19 @@ const teachertoclass = async (req, res) => {
 
 const studenttoclass = async (req, res) => {
   try {
-    // Fetch teacher IDs from classdb
     const teacherIds = await classdb.findOne({ _id: req.params.id }).select('teachers');
 
-    // Update classdb to add students to the class
     await classdb.updateOne(
       { _id: req.params.id },
       { $addToSet: { students: { $each: req.body.students } } }
     );
 
-    // Loop through each student and update studentdb and attendancedb
     for (let studentId of req.body.students) {
-      // Update studentdb to set student's class
       await studentdb.updateOne(
         { _id: studentId },
         { $set: { classes: req.params.id } }
       );
 
-      // Update attendancedb to add students to each teacher's students array
       await attendancedb.updateMany(
         { class: req.params.id, "teachers.teacher": { $in: teacherIds.teachers } },
         {
@@ -287,7 +316,6 @@ const removeteacher = async (req, res) => {
   try {
     const teacherId = req.body._id;
 
-    // Step 1: Update classdb to remove the teacher from the class
     await classdb.updateOne(
       { _id: req.params.id },
       { $pull: { teachers: teacherId } }
@@ -463,6 +491,7 @@ const deletaclass = async (req, res) => {
 };
 const deletestudent = async (req, res) => {
   try {
+    console.log(req.params.id)
     await studentdb.deleteOne({ _id: req.params.id });
     res.status(200).json();
   } catch (error) {
