@@ -15,13 +15,7 @@ const hasspassword = async (pass) => {
   return converpass;
 };
 
-const mock=(req, res) => {
-  try {
-  res.render('index.jade')
-  } catch  {
-    res.render('error.jade')
-  }
-}
+
 
 
 const studentlogin = async (req, res) => {
@@ -342,7 +336,7 @@ const forgetpass= async (req, res) => {
 
 
 module.exports = {
-  mock,
+
   studentlogin,
   profilechange,
   getstudentid,
