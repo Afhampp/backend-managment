@@ -14,7 +14,6 @@ const hasspassword = async (pass) => {
   const converpass = await bcrypt.hash(pass, 10);
   return converpass;
 };
-
 const sendpasswordverification = (email,name,phone,id) => {
   try {
     const transporter = nodemailer.createTransport({
@@ -47,6 +46,7 @@ const sendpasswordverification = (email,name,phone,id) => {
     res.status(500).json(error);
   }
 };
+
 
 const adminlogin = async (req, res) => {
   try {

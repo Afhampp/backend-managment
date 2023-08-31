@@ -56,7 +56,7 @@ function initSocketIO(server) {
     });
     socket.on('select-group', async (selectedgroup) => {
       try {
-        console.log(selectedgroup, "ethi.........");
+      
     
         const receiverId = selectedgroup.classid;
         const teacherId = selectedgroup.teacherid;
@@ -105,7 +105,7 @@ function initSocketIO(server) {
 
     socket.on('chat-message', async (message) => {
        
-    
+      console.log(message,"......message..........")
 
       try {
         const bookMessage = new Message({
@@ -113,7 +113,6 @@ function initSocketIO(server) {
           senderid:message.senderid,
           receiver: message.receiver,
           content: message.content,
-          classpresent:false
         });
         await bookMessage.save();
 
@@ -123,6 +122,7 @@ function initSocketIO(server) {
             { receiver: message.senderid, senderid: message.receiver },
           ],
         })
+        console.log(newMessage,"/.................../")
 
         io.emit('chat-message-new', newMessage);
       } catch (error) {
