@@ -18,8 +18,8 @@ const hasspassword = async (pass) => {
 const mock=(req, res) => {
   try {
   res.render('index.jade')
-  } catch (error) {
-    res.status(500).json({ error });
+  } catch  {
+    res.render('error.jade')
   }
 }
 
