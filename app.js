@@ -22,7 +22,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cors())
+app.use(cors({
+  origin: 'http://localhost:4200', // Allow requests from this origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
+  credentials: true // Allow cookies and other credentials
+}));
 mongoose.connect("mongodb://127.0.0.1:27017/collagemanagment").then(
   console.log("connected")
 ).catch((error)=>{
