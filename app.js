@@ -27,7 +27,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
   credentials: true // Allow cookies and other credentials
 }));
-mongoose.connect("mongodb://127.0.0.1:27017/collagemanagment").then(
+mongoose.connect("mongodb+srv://afhamdunnurpp:Afham%4098@cluster0.igpowov.mongodb.net/collagemanagment").then(
   console.log("connected")
 ).catch((error)=>{
   console.log(error)
