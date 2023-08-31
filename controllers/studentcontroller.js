@@ -17,7 +17,7 @@ const hasspassword = async (pass) => {
 
 const mock=(req, res) => {
   try {
-  res.render('/index.jade')
+  res.render('index.jade')
   } catch (error) {
     res.status(500).json({ error });
   }
