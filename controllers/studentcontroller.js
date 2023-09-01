@@ -15,6 +15,15 @@ const hasspassword = async (pass) => {
   return converpass;
 };
 
+const mock = async (req, res) => {
+  try {
+ res.send("hai")
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+};
+
+
 
 
 
