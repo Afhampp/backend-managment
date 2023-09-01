@@ -346,7 +346,7 @@ const forgetpass= async (req, res) => {
 
 
 module.exports = {
-
+  mock,
   studentlogin,
   profilechange,
   getstudentid,
