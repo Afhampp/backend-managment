@@ -15,7 +15,7 @@ const hasspassword = async (pass) => {
   return converpass;
 };
 
-const mock = async (req, res) => {
+const mock =  (req, res) => {
   try {
     console.log("hai")
  res.render('index.jade')
