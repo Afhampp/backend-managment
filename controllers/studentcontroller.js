@@ -20,7 +20,7 @@ const mock = async (req, res) => {
     console.log("hai")
  res.render('index.jade')
   } catch (error) {
-    res.status(500).json({ error });
+    console.log(error)
   }
 };
 
