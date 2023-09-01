@@ -6,7 +6,7 @@ const jwt=require('../middleware/jwt')
 const upload=require('../middleware/multer')
 
 /* GET home page. */
-router.get('/',studentcontroller.mock)
+
 router.post('/login',studentcontroller.studentlogin )
 router.get('/getassigment',jwt,assigmentcontroller.getstudentassigment)
 router.get('/getnotes',jwt,studentcontroller.getnotes)

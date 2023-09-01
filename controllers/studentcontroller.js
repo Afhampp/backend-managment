@@ -20,6 +20,7 @@ const hasspassword = async (pass) => {
 
 const studentlogin = async (req, res) => {
   try {
+    console.log("hai")
     const findall = await studentdb.findOne({ email: req.body.email });
     if (findall) {
       const passcompare = await bcrypt.compare(
