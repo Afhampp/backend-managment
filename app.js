@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors({
-  origin: 'https://frontend-managment.vercel.app', // Allow requests from this origin
+  origin: 'http://localhost:4200',//'https://frontend-managment.vercel.app', // Allow requests from this origin
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
   credentials: true // Allow cookies and other credentials
 }));
