@@ -3,7 +3,7 @@ var router = express.Router();
 const teacherconroller=require('../controllers/teachercontroller')
 const assigmentcontroller=require('../controllers/assignementcontroller')
 const notecontroller=require('../controllers/notecontroller')
-const jwt=require('../middleware/jwt')
+const jwt=require('../middleware/jwt/jwt_teacher')
 const upload=require('../middleware/multer')
 
 /* GET home page. */

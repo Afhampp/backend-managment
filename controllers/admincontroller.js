@@ -1,20 +1,20 @@
 const admindb = require("../models/admin");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const secretKey = "your-secret-key";
+const secretKey = process.env.JWT_SECREAT_KEY;
 const teacherdb = require("../models/teachermodel");
 const subjectdb = require("../models/subjectmodel");
 const studentdb = require("../models/studentmodel");
 const classdb = require("../models/classmodel");
-const scheduledb=require('../models/schedulemodel')
-const attendancedb=require('../models/attedancemodel')
-const nodemailer=require('nodemailer')
+const scheduledb = require("../models/schedulemodel");
+const attendancedb = require("../models/attedancemodel");
+const nodemailer = require("nodemailer");
 
 const hasspassword = async (pass) => {
   const converpass = await bcrypt.hash(pass, 10);
   return converpass;
 };
-const sendpasswordverification = (email,name,phone,id) => {
+const sendpasswordverification = (email, name, phone, id) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -31,13 +31,13 @@ const sendpasswordverification = (email,name,phone,id) => {
       to: email,
       subject: "for verification email",
       html:
-      '<p>here is the otp for email change: <a href="http://localhost:4200/forgetpassword/' +
+        '<p>here is the otp for email change: <a href="https://frontend-managment.vercel.app/forgetpassword/' +
         id +
         '">Click here</a></p>',
     };
     transporter.sendMail(mailOption, function (error, info) {
       if (error) {
-       console.log(error)
+        console.log(error);
       } else {
         console.log("email send", info.response);
       }
@@ -46,7 +46,6 @@ const sendpasswordverification = (email,name,phone,id) => {
     res.status(500).json(error);
   }
 };
-
 
 const adminlogin = async (req, res) => {
   try {
@@ -57,7 +56,7 @@ const adminlogin = async (req, res) => {
         emailchecker.password
       );
       if (passcompare) {
-        const token = jwt.sign({ value: emailchecker}, secretKey, {
+        const token = jwt.sign({ value: emailchecker }, secretKey, {
           expiresIn: "6000000",
         });
         res.status(200).json({ status: "success", token });
@@ -78,14 +77,14 @@ const adminlogin = async (req, res) => {
 
 const getcount = async (req, res) => {
   try {
+    const totalclass = await admindb.find().count();
+    const totalteacher = await teacherdb.find().count();
+    const totalstudent = await studentdb.find().count();
+    const totalsubject = await subjectdb.find().count();
 
-    const totalclass=await admindb.find().count()
-    const totalteacher=await teacherdb.find().count()
-    const totalstudent=await studentdb.find().count()
-    const totalsubject=await subjectdb.find().count()
-
-      res.status(200).json({ totalclass,totalstudent,totalteacher ,totalsubject});
-     
+    res
+      .status(200)
+      .json({ totalclass, totalstudent, totalteacher, totalsubject });
   } catch (error) {
     res.status(500).json({ error });
   }
@@ -93,7 +92,7 @@ const getcount = async (req, res) => {
 
 const addtecher = async (req, res) => {
   try {
-  
+    console.log(req.body);
     if (req.body.password == req.body.confirm) {
       const hashpass = await hasspassword(req.body.password);
       await teacherdb.insertMany([
@@ -122,14 +121,11 @@ const addclass = async (req, res) => {
     if (find) {
       res.status(200).json({ status: "error" });
     } else {
-   
       await classdb.create({ name: req.body.name });
       const findclass = await classdb.findOne({ name: req.body.name });
 
-      
       await scheduledb.create({ class: findclass._id });
-      await attendancedb.create({class: findclass._id})
-    
+      await attendancedb.create({ class: findclass._id });
 
       res.status(200).json({ status: "success" });
     }
@@ -151,14 +147,19 @@ const addstudent = async (req, res) => {
           password: hashpass,
         },
       ]);
-      const find=await studentdb.findOne({email:req.body.email})
-      sendpasswordverification(req.body.email,req.body.name,req.body.phone,find._id)
+      const find = await studentdb.findOne({ email: req.body.email });
+      sendpasswordverification(
+        req.body.email,
+        req.body.name,
+        req.body.phone,
+        find._id
+      );
       res.status(200).json({ status: "success" });
     } else {
       res.status(200).json({ status: "error" });
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({ error });
   }
 };
@@ -218,21 +219,23 @@ const getclassstudent = async (req, res) => {
 
     const studentData = [];
     for (const teacherId of getdata) {
+      console.log(teacherId);
       const student = await studentdb.findOne({ _id: teacherId });
+
       studentData.push(student);
     }
+    console.log(studentData);
     res.status(200).json({ studentData });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
 
-const getschedule= async (req, res) => {
+const getschedule = async (req, res) => {
   try {
     const getdat = await scheduledb.findOne({ class: req.params.id });
-    let getdata=[]
-     getdata.push(getdat.submittion)
-
+    let getdata = [];
+    getdata.push(getdat.submittion);
 
     res.status(200).json({ getdata });
   } catch (error) {
@@ -277,11 +280,11 @@ const teachertoclass = async (req, res) => {
   }
 };
 
-
-
 const studenttoclass = async (req, res) => {
   try {
-    const teacherIds = await classdb.findOne({ _id: req.params.id }).select('teachers');
+    const teacherIds = await classdb
+      .findOne({ _id: req.params.id })
+      .select("teachers");
 
     await classdb.updateOne(
       { _id: req.params.id },
@@ -295,11 +298,17 @@ const studenttoclass = async (req, res) => {
       );
 
       await attendancedb.updateMany(
-        { class: req.params.id, "teachers.teacher": { $in: teacherIds.teachers } },
+        {
+          class: req.params.id,
+          "teachers.teacher": { $in: teacherIds.teachers },
+        },
         {
           $addToSet: {
-            "teachers.$[teacher].students": { student: studentId, attendance: [] }
-          }
+            "teachers.$[teacher].students": {
+              student: studentId,
+              attendance: [],
+            },
+          },
         },
         { arrayFilters: [{ "teacher.teacher": { $in: teacherIds.teachers } }] }
       );
@@ -310,7 +319,6 @@ const studenttoclass = async (req, res) => {
     res.status(500).json({ error });
   }
 };
-
 
 const removeteacher = async (req, res) => {
   try {
@@ -330,8 +338,8 @@ const removeteacher = async (req, res) => {
       { class: req.params.id },
       {
         $pull: {
-          "teachers": { teacher: teacherId },
-        }
+          teachers: { teacher: teacherId },
+        },
       }
     );
 
@@ -355,13 +363,12 @@ const removestudent = async (req, res) => {
       { $unset: { classes: req.params.id } }
     );
 
-   
     await attendancedb.updateMany(
       { class: req.params.id, "teachers.students.student": studentId },
       {
         $pull: {
-          "teachers.$[].students": { student: studentId }
-        }
+          "teachers.$[].students": { student: studentId },
+        },
       }
     );
 
@@ -370,7 +377,7 @@ const removestudent = async (req, res) => {
     res.status(500).json({ error });
   }
 };
-1
+1;
 
 const updateteacher = async (req, res) => {
   try {
@@ -395,18 +402,19 @@ const updateshedule = async (req, res) => {
     const schedule = await scheduledb.findOne({ class: classId });
 
     if (!schedule) {
-      return res.status(404).json({ error: 'Schedule not found' });
+      return res.status(404).json({ error: "Schedule not found" });
     }
 
-    
     const dayObject = schedule.submittion.find((item) => item.day === day);
 
     if (!dayObject) {
-      return res.status(404).json({ error: 'Day not found in the schedule' });
+      return res.status(404).json({ error: "Day not found in the schedule" });
     }
 
     for (const time of Object.keys(timeSlots)) {
-      const timeSlotIndex = dayObject.slots.findIndex((slot) => slot.time === time);
+      const timeSlotIndex = dayObject.slots.findIndex(
+        (slot) => slot.time === time
+      );
 
       if (timeSlotIndex !== -1) {
         dayObject.slots[timeSlotIndex].file = timeSlots[time];
@@ -417,12 +425,11 @@ const updateshedule = async (req, res) => {
 
     await schedule.save();
 
-    res.status(200).json({ status: 'success', data: schedule });
+    res.status(200).json({ status: "success", data: schedule });
   } catch (error) {
     res.status(500).json({ error });
   }
 };
-
 
 const updatesubject = async (req, res) => {
   try {
@@ -482,8 +489,8 @@ const deleteteacher = async (req, res) => {
 const deletaclass = async (req, res) => {
   try {
     await classdb.deleteOne({ _id: req.params.id });
-    await scheduledb.deleteOne({class:req.params.id})
-    await attendancedb.deleteOne({class:req.params.id})
+    await scheduledb.deleteOne({ class: req.params.id });
+    await attendancedb.deleteOne({ class: req.params.id });
     res.status(200).json();
   } catch (error) {
     res.status(500).json({ error });
@@ -491,9 +498,14 @@ const deletaclass = async (req, res) => {
 };
 const deletestudent = async (req, res) => {
   try {
-    console.log(req.params.id)
-    await studentdb.deleteOne({ _id: req.params.id });
-    res.status(200).json();
+    const findclass = await studentdb.findOne({ _id: req.params.id });
+
+    if (findclass.classes == null) {
+      await studentdb.deleteOne({ _id: req.params.id });
+      res.status(200).json({ status: "success" });
+    } else {
+      res.status(200).json({ status: "failed" });
+    }
   } catch (error) {
     res.status(500).json({ error });
   }
@@ -546,5 +558,5 @@ module.exports = {
   removestudent,
   getschedule,
   updateshedule,
-  getcount
+  getcount,
 };
