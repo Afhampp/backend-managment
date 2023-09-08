@@ -26,11 +26,13 @@ const mock = (req, res) => {
 const studentlogin = async (req, res) => {
   try {
     const findall = await studentdb.findOne({ email: req.body.email });
+    console.log(findall)
     if (findall) {
       const passcompare = await bcrypt.compare(
         req.body.password,
         findall.password
       );
+      console.log(passcompare)
       if (passcompare) {
         const token = jwt.sign({ value: findall }, secretKey, {
           expiresIn: "6000000",
