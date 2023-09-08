@@ -49,6 +49,7 @@ const studentlogin = async (req, res) => {
         .json({ status: "error", msg: "Invalid admin", check: "email" });
     }
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error });
   }
 };
