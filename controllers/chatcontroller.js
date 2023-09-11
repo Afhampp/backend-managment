@@ -1,7 +1,4 @@
-const admindb = require("../models/admin");
-const teacherdb = require("../models/teachermodel");
-const subjectdb = require("../models/subjectmodel");
-const studentdb = require("../models/studentmodel");
+
 const classdb = require("../models/classmodel");
 const Message = require("../models/messagemodal");
 const socketIO = require("socket.io");
